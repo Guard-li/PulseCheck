@@ -63,6 +63,12 @@ public static class ApiEndpoints
         });
         api.MapDelete("/auth/devices/{controllerId}", (string controllerId, AgentSecurity security) =>
             Results.Ok(ApiResponse<bool>.Ok(security.Revoke(controllerId))));
+        api.MapGet("/settings", (RuntimeSettingsStore settings) =>
+            Results.Ok(ApiResponse<RuntimeSettingsView>.Ok(settings.Snapshot())));
+        api.MapPut("/settings", (UpdateSettingsRequest request, RuntimeSettingsStore settings) =>
+            Results.Ok(ApiResponse<RuntimeSettingsView>.Ok(settings.Update(request))));
+        api.MapPost("/elevation/smart", async (SmartProbeService smart, CancellationToken cancellationToken) =>
+            Results.Ok(ApiResponse<SmartProbeResponse>.Ok(await smart.RequestAsync(cancellationToken))));
 
         api.MapGet("/system/info", async (SqliteDatabase database, IMetricCollector collector, CancellationToken cancellationToken) =>
         {

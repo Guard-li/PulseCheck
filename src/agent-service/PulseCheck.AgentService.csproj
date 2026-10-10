@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>PulseCheck.AgentService</RootNamespace>
     <AssemblyName>PulseCheck.AgentService</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
   <ItemGroup>

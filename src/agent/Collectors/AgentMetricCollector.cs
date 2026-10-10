@@ -41,7 +41,7 @@ public sealed class AgentMetricCollector : IMetricCollector, IDisposable
             var gpus = _gpu.Collect();
             var system = _system.Collect(includeSlowChecks);
             var sensors = _sensors.Collect(includeSlowChecks);
-            var processes = _processes.CollectTop();
+            var processes = _processes.Collect();
             if (sensors.CpuTemperatureCelsius is double temperature)
             {
                 cpu = cpu with

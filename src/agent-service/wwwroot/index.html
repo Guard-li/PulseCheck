@@ -31,7 +31,7 @@
 
     <main class="main">
       <header class="topbar">
-        <div><h1 id="pageTitle" data-i18n="overview">总览</h1><p id="deviceLine" class="muted">等待连接 Agent</p></div>
+        <div><h1 id="pageTitle" data-i18n="overview">总览</h1><p id="deviceLine" class="muted">等待连接 Agent</p><p id="sampleStatus" class="sample-status">尚未收到实时数据</p></div>
         <div class="top-actions">
           <button id="quickScanButton" class="primary" data-i18n="quickScan">快速检测</button>
           <button id="connectButton" class="secondary" data-i18n="connect">连接设备</button>
@@ -76,7 +76,8 @@
       </section>
       <section id="view-reports" class="view"><div class="card"><div class="card-title"><h2 data-i18n="reportCenter">报告中心</h2><button id="refreshReports" class="secondary" data-i18n="refresh">刷新</button></div><div id="reportList" class="report-grid muted" data-i18n="noReports">尚无报告</div></div></section>
       <section id="view-devices" class="view">
-        <div class="two-column"><article class="card"><h2 data-i18n="connection">连接</h2><label>Agent 地址<input id="agentUrl" class="field" placeholder="https://192.168.1.10:17821"></label><label>Token<input id="tokenField" class="field" type="password" placeholder="配对后自动填写"></label><button id="saveConnection" class="primary" data-i18n="save">保存</button><button id="disconnectButton" class="danger" data-i18n="disconnect">断开</button></article><article class="card"><h2 data-i18n="privacySettings">隐私与设置</h2><p class="muted" data-i18n="privacyHint">Agent 默认只监听局域网和本机，报告默认隐藏 MAC、IP、用户名和序列号。</p><div class="settings-row"><span data-i18n="theme">主题</span><button id="settingsTheme" class="secondary">自动 / 深色 / 浅色</button></div><div class="settings-row"><span data-i18n="language">语言</span><button id="settingsLanguage" class="secondary">中文 / English</button></div><div class="settings-row"><span data-i18n="certificate">TLS 指纹</span><code id="certFingerprint">--</code></div></article></div>
+        <div class="two-column"><article class="card"><h2 data-i18n="connection">连接</h2><label>Agent 地址<input id="agentUrl" class="field" placeholder="https://192.168.1.10:17821"></label><label>Token<input id="tokenField" class="field" type="password" placeholder="配对后自动填写"></label><button id="saveConnection" class="primary" data-i18n="save">保存</button><button id="disconnectButton" class="danger" data-i18n="disconnect">断开</button></article><article class="card"><h2 data-i18n="privacySettings">隐私与设置</h2><p class="muted" data-i18n="privacyHint">Agent 默认只监听局域网和本机，报告默认隐藏 MAC、IP、用户名和序列号。</p><div class="settings-row"><span>实时采样频率</span><select id="sampleInterval" class="field compact-field"><option value="500">0.5 秒（高实时）</option><option value="1000">1 秒（推荐）</option><option value="2000">2 秒</option><option value="5000">5 秒（低功耗）</option></select><button id="saveSampleInterval" class="secondary">应用</button></div>
+<div class="settings-row"><span data-i18n="theme">主题</span><button id="settingsTheme" class="secondary">自动 / 深色 / 浅色</button></div><div class="settings-row"><span data-i18n="language">语言</span><button id="settingsLanguage" class="secondary">中文 / English</button></div><div class="settings-row"><span data-i18n="certificate">TLS 指纹</span><code id="certFingerprint">--</code></div></article></div>
       </section>
     </main>
   </div>

@@ -1,15 +1,17 @@
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
-using PulseCheck.Contracts;
 using PulseCheck.Agent.Native;
+using PulseCheck.Contracts;
 
 namespace PulseCheck.Agent.Collectors;
 
-public sealed class CpuCollector
+public sealed class CpuCollector : IDisposable
 {
     private readonly object _gate = new();
     private NativeMethods.SystemProcessorPerformanceInformation[] _last = [];
     private DateTimeOffset _lastSample = DateTimeOffset.MinValue;
+    private PdhSingleCounter? _performanceCounter;
+    private bool _performanceInitialized;
 
     public CpuMetrics Collect()
     {
@@ -18,6 +20,17 @@ public sealed class CpuCollector
             var cores = ReadPerCore();
             var now = DateTimeOffset.UtcNow;
             var usage = CalculateUsage(cores, now);
+            if (!_performanceInitialized)
+            {
+                _performanceCounter = PdhSingleCounter.TryCreate(
+                    @"\Processor Information(_Total)\% Processor Utility",
+                    @"\Processor Information(_Total)\% Processor Time");
+                _performanceInitialized = true;
+            }
+            var totalUsage = _performanceCounter?.Read();
+            if (totalUsage is not null)
+                usage.Total = Math.Round(Math.Clamp(totalUsage.Value, 0, 100), 2);
+
             var power = ReadProcessorPower();
             var name = NativeMethods.ReadRegistryString(
                 Registry.LocalMachine,
@@ -159,4 +172,6 @@ public sealed class CpuCollector
         var value = NativeMethods.ReadRegistryValue(root, path, name);
         return value is int i ? i : null;
     }
+
+    public void Dispose() => _performanceCounter?.Dispose();
 }

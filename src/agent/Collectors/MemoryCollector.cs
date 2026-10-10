@@ -11,18 +11,22 @@ public sealed class MemoryCollector
         var (status, memoryOk) = NativeMethods.ReadMemoryStatus();
         var (performance, performanceOk) = NativeMethods.ReadPerformanceInformation();
         if (!memoryOk) throw new InvalidOperationException("GlobalMemoryStatusEx failed");
-        var used = status.TotalPhysical - Math.Min(status.TotalPhysical, status.AvailablePhysical);
         var pageSize = performanceOk && performance.PageSize > 0 ? (ulong)performance.PageSize : 4096UL;
-        var modules = status.TotalPhysical > 0 && performanceOk && performance.PhysicalTotal > 0
+        var totalVisible = performanceOk && performance.PhysicalTotal > 0
             ? (ulong)performance.PhysicalTotal * pageSize
             : status.TotalPhysical;
-        var hardwareReserved = status.TotalPhysical > modules ? status.TotalPhysical - modules : 0;
+        var available = performanceOk && performance.PhysicalAvailable > 0
+            ? (ulong)performance.PhysicalAvailable * pageSize
+            : status.AvailablePhysical;
+        available = Math.Min(totalVisible, available);
+        var used = totalVisible - available;
+        var hardwareReserved = status.TotalPhysical > totalVisible ? status.TotalPhysical - totalVisible : 0;
         return new MemoryMetrics
         {
-            TotalBytes = status.TotalPhysical,
-            AvailableBytes = status.AvailablePhysical,
+            TotalBytes = totalVisible,
+            AvailableBytes = available,
             UsedBytes = used,
-            UsagePercent = CollectorUtilities.Percent(used, status.TotalPhysical),
+            UsagePercent = CollectorUtilities.Percent(used, totalVisible),
             CommittedBytes = performanceOk ? (ulong)performance.CommitTotal * pageSize : null,
             CommitLimitBytes = performanceOk ? (ulong)performance.CommitLimit * pageSize : null,
             CachedBytes = performanceOk ? (ulong)performance.SystemCache * pageSize : null,

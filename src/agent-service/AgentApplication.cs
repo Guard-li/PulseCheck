@@ -35,6 +35,7 @@ public static class AgentApplication
         Directory.CreateDirectory(options.DataDirectory);
         Directory.CreateDirectory(options.ReportDirectory);
 
+        var runtimeSettings = new RuntimeSettingsStore(options);
         var identity = new AgentIdentity(options.DataDirectory);
         if (string.IsNullOrWhiteSpace(options.DisplayName)) options.DisplayName = identity.DisplayName;
         var certificate = CertificateManager.GetOrCreate(options.DataDirectory, identity.DeviceId, identity.DisplayName);
@@ -57,6 +58,7 @@ public static class AgentApplication
         });
         builder.Logging.AddProvider(new RotatingJsonFileLoggerProvider(options.DataDirectory));
         builder.Services.AddSingleton(options);
+        builder.Services.AddSingleton(runtimeSettings);
         builder.Services.AddSingleton(identity);
         builder.Services.AddSingleton(certificate);
         builder.Services.AddSingleton(database);
@@ -69,6 +71,7 @@ public static class AgentApplication
         builder.Services.AddSingleton<AlertEngine>();
         builder.Services.AddSingleton<ScanManager>();
         builder.Services.AddSingleton(new AgentSecurity(options.DataDirectory, options));
+        builder.Services.AddSingleton(new SmartProbeService(options));
         builder.Services.AddHostedService<MetricSamplingService>();
         builder.Services.AddHostedService<UdpDiscoveryService>();
         builder.Services.AddHostedService<ScheduleService>();

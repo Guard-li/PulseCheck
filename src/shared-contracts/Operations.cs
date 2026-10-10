@@ -160,3 +160,15 @@ public sealed record InstalledSoftwareInfo(
     string? Publisher,
     DateOnly? InstallDate,
     string Scope);
+public sealed record RuntimeSettingsView(
+    int SampleIntervalMs,
+    int MinimumSampleIntervalMs,
+    int MaximumSampleIntervalMs,
+    string Description);
+
+public sealed record UpdateSettingsRequest(int SampleIntervalMs);
+
+public sealed record SmartProbeResponse(
+    bool Authorized,
+    string Message,
+    PhysicalDiskInfo[] Disks);

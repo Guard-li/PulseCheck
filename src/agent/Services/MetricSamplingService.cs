@@ -14,6 +14,7 @@ public sealed class MetricSamplingService : BackgroundService
     private readonly AlertEngine _alerts;
     private readonly AgentIdentity _identity;
     private readonly AgentOptions _options;
+    private readonly RuntimeSettingsStore _runtimeSettings;
     private readonly ILogger<MetricSamplingService> _logger;
     private DateTimeOffset _lastCleanupUtc = DateTimeOffset.MinValue;
 
@@ -24,6 +25,7 @@ public sealed class MetricSamplingService : BackgroundService
         AlertEngine alerts,
         AgentIdentity identity,
         AgentOptions options,
+        RuntimeSettingsStore runtimeSettings,
         ILogger<MetricSamplingService> logger)
     {
         _collector = collector;
@@ -32,6 +34,7 @@ public sealed class MetricSamplingService : BackgroundService
         _alerts = alerts;
         _identity = identity;
         _options = options;
+        _runtimeSettings = runtimeSettings;
         _logger = logger;
     }
 
@@ -43,8 +46,8 @@ public sealed class MetricSamplingService : BackgroundService
             try
             {
                 var snapshot = await _collector.CollectAsync(includeSlowChecks: false, stoppingToken);
-                await _database.InsertMetricAsync(snapshot, stoppingToken);
                 _hub.Publish(new RealtimeEnvelope("metrics", _identity.DeviceId, snapshot.TimestampUtc, snapshot.DataVersion, snapshot));
+                await _database.InsertMetricAsync(snapshot, stoppingToken);
                 var changes = await _alerts.ProcessAsync(snapshot, stoppingToken);
                 foreach (var alert in changes)
                     _hub.Publish(new RealtimeEnvelope("alert", _identity.DeviceId, DateTimeOffset.UtcNow, snapshot.DataVersion, alert));
@@ -63,7 +66,7 @@ public sealed class MetricSamplingService : BackgroundService
                 _logger.LogError(ex, "指标采集周期失败");
             }
 
-            var interval = Math.Clamp(_options.SampleIntervalMs, 500, 10000);
+            var interval = _runtimeSettings.SampleIntervalMs;
             var remaining = TimeSpan.FromMilliseconds(interval) - (DateTimeOffset.UtcNow - started);
             if (remaining > TimeSpan.Zero) await Task.Delay(remaining, stoppingToken);
         }

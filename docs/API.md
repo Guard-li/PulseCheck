@@ -80,6 +80,25 @@ token.<长期Token>
 
 告警变更会发送 `type: "alert"`。客户端应在断开后自动重连。
 
+## 设置与管理员授权
+
+### `GET /settings`
+
+返回当前实时采样周期，可选范围为 500 到 10000 毫秒。
+
+### `PUT /settings`
+
+```json
+{
+  "sampleIntervalMs": 500
+}
+```
+
+该设置持久化到数据目录，控制台总览会显示最近一次真实采样时间。500 毫秒属于高频采样，会增加资源占用。
+
+### `POST /elevation/smart`
+
+当 Agent 没有管理员权限时，触发 Windows UAC 授权并在授权成功后读取物理磁盘与 SMART。用户取消 UAC 时返回 `authorized=false`，其他监测功能不受影响。该操作属于写入操作，需要 `owner` 角色。
 ## 系统与硬件
 
 | 方法 | 路径 | 内容 |

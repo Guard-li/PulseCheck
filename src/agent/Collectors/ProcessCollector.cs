@@ -8,10 +8,11 @@ public sealed class ProcessCollector
     private readonly object _gate = new();
     private readonly Dictionary<int, (TimeSpan Cpu, DateTimeOffset At, DateTimeOffset? Start)> _last = new();
 
-    public ProcessMetric[] CollectTop(int count = 10)
+    public ProcessMetric[] Collect(int limit = 500)
     {
         var now = DateTimeOffset.UtcNow;
-        var result = new List<ProcessMetric>();
+        var result = new List<ProcessMeasure>();
+
         foreach (var process in Process.GetProcesses())
         {
             try
@@ -25,22 +26,18 @@ public sealed class ProcessCollector
                     {
                         var elapsed = Math.Max(1, (now - previous.At).TotalMilliseconds);
                         var delta = Math.Max(0, (totalCpu.Value - previous.Cpu).TotalMilliseconds);
-                        cpu = Math.Round(Math.Clamp(delta / (elapsed * Environment.ProcessorCount) * 100, 0, 100 * Environment.ProcessorCount), 2);
+                        cpu = Math.Round(Math.Clamp(delta / (elapsed * Environment.ProcessorCount) * 100, 0, 100), 2);
                     }
                     if (totalCpu is not null) _last[process.Id] = (totalCpu.Value, now, start);
                 }
 
-                result.Add(new ProcessMetric(
+                result.Add(new ProcessMeasure(
                     process.Id,
                     process.ProcessName,
                     cpu,
                     SafeWorkingSet(process),
                     SafePrivateBytes(process),
-                    start,
-                    CollectorUtilities.MaskPath(TryExecutablePath(process)),
-                    TryCompany(process),
-                    TryDescription(process),
-                    false));
+                    start));
             }
             catch
             {
@@ -55,14 +52,50 @@ public sealed class ProcessCollector
         var ordered = result
             .OrderByDescending(x => x.CpuUsagePercent ?? -1)
             .ThenByDescending(x => x.WorkingSetBytes)
-            .Take(count)
+            .Take(Math.Clamp(limit, 10, 2000))
             .ToArray();
+
+        // File version information is comparatively expensive. Only enrich the processes
+        // that are actually returned instead of opening MainModule for every process each second.
+        var details = new Dictionary<int, (string? Path, string? Company, string? Description)>();
+        foreach (var item in ordered.Take(40))
+        {
+            try
+            {
+                using var process = Process.GetProcessById(item.ProcessId);
+                details[item.ProcessId] = (
+                    CollectorUtilities.MaskPath(TryExecutablePath(process)),
+                    TryCompany(process),
+                    TryDescription(process));
+            }
+            catch
+            {
+                details[item.ProcessId] = (null, null, null);
+            }
+        }
+
+        var snapshot = ordered.Select(item =>
+        {
+            details.TryGetValue(item.ProcessId, out var detail);
+            return new ProcessMetric(
+                item.ProcessId,
+                item.Name,
+                item.CpuUsagePercent,
+                item.WorkingSetBytes,
+                item.PrivateBytes,
+                item.StartTimeUtc,
+                detail.Path,
+                detail.Company,
+                detail.Description,
+                false);
+        }).ToArray();
+
         lock (_gate)
         {
             var active = result.Select(x => x.ProcessId).ToHashSet();
             foreach (var stale in _last.Keys.Where(x => !active.Contains(x)).ToArray()) _last.Remove(stale);
         }
-        return ordered;
+        return snapshot;
     }
 
     private static TimeSpan? SafeCpu(Process process)
@@ -99,4 +132,12 @@ public sealed class ProcessCollector
     {
         try { return process.MainModule?.FileVersionInfo.FileDescription; } catch { return null; }
     }
+
+    private sealed record ProcessMeasure(
+        int ProcessId,
+        string Name,
+        double? CpuUsagePercent,
+        ulong WorkingSetBytes,
+        ulong PrivateBytes,
+        DateTimeOffset? StartTimeUtc);
 }

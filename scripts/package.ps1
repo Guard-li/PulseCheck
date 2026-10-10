@@ -1,7 +1,7 @@
 ﻿[CmdletBinding()]
 param(
     [string]$BuildDirectory = 'artifacts/win-x64',
-    [string]$Version = '0.1.0'
+    [string]$Version = '0.1.1'
 )
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path (Join-Path $PSScriptRoot '..')

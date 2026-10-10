@@ -31,7 +31,9 @@ const state = {
   rangeMinutes: 1,
   scans: [],
   reports: [],
-  pairingInfo: null
+  pairingInfo: null,
+  sampleIntervalMs: 1000,
+  smartDisks: []
 };
 
 const $ = selector => document.querySelector(selector);
@@ -105,16 +107,18 @@ function setConnection(online, text) {
 async function fetchInitial() {
   if (!state.token || !state.base) return;
   try {
-    const [current, history, alerts, scans, reports] = await Promise.all([
+    const [current, history, alerts, scans, reports, settings] = await Promise.all([
       api('/metrics/current'),
       api(`/metrics/history?from=${encodeURIComponent(new Date(Date.now() - 3600000).toISOString())}&limit=2000`).catch(() => ({ data: [] })),
       api('/alerts?limit=20').catch(() => ({ data: [] })),
       api('/scans?limit=20').catch(() => ({ data: [] })),
-      api('/reports?limit=20').catch(() => ({ data: [] }))
+      api('/reports?limit=20').catch(() => ({ data: [] })),
+      api('/settings').catch(() => null)
     ]);
     state.samples = history.data || [];
     state.scans = scans.data || [];
     state.reports = reports.data || [];
+    if (settings?.data?.sampleIntervalMs) { state.sampleIntervalMs = settings.data.sampleIntervalMs; $('#sampleInterval').value = String(state.sampleIntervalMs); }
     updateMetrics(current.data);
     renderAlerts(alerts.data || []);
     renderScans();
@@ -202,9 +206,9 @@ function updateMetrics(snapshot) {
   $('#uptime').textContent = formatDuration(snapshot.system?.uptime);
   $('#operatingMode').textContent = snapshot.system?.isAdministrator ? '完整模式' : '受限模式';
   $('#deviceLine').textContent = `${snapshot.system?.computerName || '本机'} · ${snapshot.system?.osName || ''} ${snapshot.system?.osVersion || ''}`;
-  renderProcesses();
-  renderHardware();
-  renderNetwork();
+  if (state.currentView === 'processes') renderProcesses();
+  if (state.currentView === 'hardware') renderHardware();
+  if (state.currentView === 'network') renderNetwork();
   drawAllCharts();
 }
 
@@ -261,16 +265,21 @@ function drawChart(selector, series, fixedMax, unit) {
 
 function renderProcesses() {
   const query = ($('#processSearch').value || '').toLowerCase();
-  const rows = (state.latest?.topProcesses || []).filter(x => !query || x.name.toLowerCase().includes(query));
-  $('#processTable').innerHTML = rows.map(x => `<tr><td>${x.processId}</td><td>${esc(x.name)}</td><td>${x.cpuUsagePercent == null ? '--' : x.cpuUsagePercent.toFixed(2) + '%'}</td><td>${formatBytes(x.workingSetBytes)}</td><td>${esc(x.company || '--')}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">暂无进程数据</td></tr>';
+  const rows = [...(state.latest?.topProcesses || [])]
+    .filter(x => !query || x.name.toLowerCase().includes(query))
+    .sort((a, b) => (b.cpuUsagePercent ?? -1) - (a.cpuUsagePercent ?? -1) || b.workingSetBytes - a.workingSetBytes)
+    .slice(0, 500);
+  $('#processTable').innerHTML = rows.map(x => `<tr><td>${x.processId}</td><td>${esc(x.name)}</td><td>${x.cpuUsagePercent == null ? '--' : x.cpuUsagePercent.toFixed(2) + '%'}</td><td>${formatBytes(x.workingSetBytes)}</td><td>${esc(x.company || '--')}</td></tr>`).join('') || `<tr><td colspan="5" class="empty">暂无进程数据（共 ${state.latest?.topProcesses?.length || 0} 项）</td></tr>`;
 }
 
 function renderHardware() {
   const s = state.latest; if (!s) return;
   const modules = (s.memory?.modules || []).map(x => `<div class="list-item"><span>${esc(x.bankLabel || '内存插槽')}<br><small>${esc(x.manufacturer || '')} ${esc(x.partNumber || '')}</small></span><b>${formatBytes(x.capacityBytes)} · ${x.speedMhz || '--'} MHz</b></div>`).join('');
   const disks = (s.disk?.volumes || []).map(x => `<div class="list-item"><span>${esc(x.name)} ${esc(x.label || '')}<br><small>${esc(x.fileSystem || '')}</small></span><b>${formatBytes(x.freeBytes)} 可用</b></div>`).join('');
-  const physical = (s.disk?.physicalDisks || []).map(x => `<div class="list-item"><span>${esc(x.friendlyName)}<br><small>${esc(x.mediaType)} · ${esc(x.busType)}</small></span><b>${esc(x.healthStatus || '状态未知')}</b></div>`).join('');
-  $('#hardwareContent').innerHTML = `<article class="card"><h2>CPU</h2><div class="list-item"><span>${esc(s.cpu?.name)}<br><small>${s.cpu?.physicalCoreCount || '--'} 核 / ${s.cpu?.logicalProcessorCount || '--'} 线程</small></span><b>${s.cpu?.currentFrequencyMhz ? Math.round(s.cpu.currentFrequencyMhz) + ' MHz' : '频率不可用'}</b></div></article><article class="card"><h2>内存模块</h2>${modules || '<div class="empty">未读取到 SMBIOS 内存模块</div>'}</article><article class="card"><h2>卷</h2>${disks}</article><article class="card"><h2>物理磁盘与 SMART</h2>${physical || `<div class="empty">${state.lang === 'zh' ? '需要管理员权限和存储管理组件' : 'Administrator and Storage Management required'}</div>`}</article>`;
+  const diskList = (state.smartDisks?.length ? state.smartDisks : (s.disk?.physicalDisks || []));
+  const physical = diskList.map(x => `<div class="list-item"><span>${esc(x.friendlyName)}<br><small>${esc(x.mediaType)} · ${esc(x.busType)}${x.temperatureCelsius != null ? ` · ${x.temperatureCelsius}°C` : ''}</small></span><b>${esc(x.healthStatus || '状态未知')}${x.remainingLifePercent != null ? ` · 寿命 ${x.remainingLifePercent}%` : ''}</b></div>`).join('');
+  const smartAction = physical ? '' : `<button id="authorizeSmart" class="primary" onclick="requestSmartAuthorization()">授权读取 SMART</button><p class="muted">会弹出 Windows 管理员授权窗口；拒绝或取消不会影响其他监测功能。</p>`;
+  $('#hardwareContent').innerHTML = `<article class="card"><h2>CPU</h2><div class="list-item"><span>${esc(s.cpu?.name)}<br><small>${s.cpu?.physicalCoreCount || '--'} 核 / ${s.cpu?.logicalProcessorCount || '--'} 线程</small></span><b>${s.cpu?.currentFrequencyMhz ? Math.round(s.cpu.currentFrequencyMhz) + ' MHz' : '频率不可用'}</b></div></article><article class="card"><h2>内存模块</h2>${modules || '<div class="empty">未读取到 SMBIOS 内存模块</div>'}</article><article class="card"><h2>卷</h2>${disks}</article><article class="card"><h2>物理磁盘与 SMART</h2>${physical || `<div class="empty">${state.lang === 'zh' ? '当前没有物理磁盘 SMART 数据' : 'No SMART data available'}</div>`}${smartAction}</article>`;
 }
 
 function renderNetwork() {
@@ -337,6 +346,30 @@ async function refreshReports() {
   try { const response = await api('/reports?limit=100'); state.reports = response.data || []; renderReports(); } catch (error) { alert(error.message); }
 }
 
+async function requestSmartAuthorization() {
+  try {
+    const button = $('#authorizeSmart');
+    if (button) { button.disabled = true; button.textContent = '等待 Windows 授权…'; }
+    const response = await api('/elevation/smart', { method: 'POST' });
+    const result = response.data;
+    if (!result.authorized) throw new Error(result.message || '未获得管理员授权');
+    state.smartDisks = result.disks || [];
+    renderHardware();
+  } catch (error) {
+    alert(`${error.message}\n\n这是可选操作，SMART 不可用时其他实时监测仍可正常工作。`);
+    const button = $('#authorizeSmart');
+    if (button) { button.disabled = false; button.textContent = '授权读取 SMART'; }
+  }
+}
+
+async function saveSampleInterval() {
+  try {
+    const value = Number($('#sampleInterval').value);
+    const response = await api('/settings', { method: 'PUT', body: JSON.stringify({ sampleIntervalMs: value }) });
+    state.sampleIntervalMs = response.data.sampleIntervalMs;
+    $('#sampleStatus').textContent = `采样周期已设置为 ${state.sampleIntervalMs} ms，等待下一次实时数据`;
+  } catch (error) { alert(error.message); }
+}
 function renderAll() {
   if (state.latest) updateMetrics(state.latest);
   renderScans(); renderReports();
@@ -360,6 +393,7 @@ function bindEvents() {
   $('#disconnectButton').addEventListener('click', () => { state.token = ''; localStorage.removeItem('pulsecheck.token'); state.ws?.close(); setConnection(false, '未连接'); openPairDialog(); });
   window.openReport = async id => { try { const response = await api(`/reports/${id}`); state.reports = [response.data]; setView('reports'); renderReports(); } catch (error) { alert(error.message); } };
   window.downloadArtifact = downloadArtifact;
+  window.requestSmartAuthorization = requestSmartAuthorization;
 }
 
 async function openPairDialog() {
