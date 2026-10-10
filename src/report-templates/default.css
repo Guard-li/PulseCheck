@@ -1,0 +1,4 @@
+/* PulseCheck 报告模板覆盖文件。
+   修改后在发布前运行 scripts/build.ps1，文件会复制到 Agent 的 report-templates 目录。
+   以下示例保持默认主题，可按组织品牌覆盖颜色。 */
+:root { --accent: #0d6efd; }

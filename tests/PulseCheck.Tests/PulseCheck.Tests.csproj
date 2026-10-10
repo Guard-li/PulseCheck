@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>PulseCheck.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\agent\PulseCheck.Agent.csproj" />
+    <ProjectReference Include="..\..\src\shared-contracts\PulseCheck.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\config\health-rules.json" Link="config\health-rules.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

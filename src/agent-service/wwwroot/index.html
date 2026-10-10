@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <title>PulseCheck 控制台</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="pulse-dot"></span><div><b>PulseCheck</b><small data-i18n="tagline">本地优先的健康监测</small></div></div>
+      <nav id="nav">
+        <button class="nav-item active" data-view="dashboard"><span>⌁</span><label data-i18n="overview">总览</label></button>
+        <button class="nav-item" data-view="realtime"><span>⌁</span><label data-i18n="realtime">实时性能</label></button>
+        <button class="nav-item" data-view="hardware"><span>▣</span><label data-i18n="hardware">硬件与存储</label></button>
+        <button class="nav-item" data-view="network"><span>⇄</span><label data-i18n="network">网络</label></button>
+        <button class="nav-item" data-view="processes"><span>≋</span><label data-i18n="processes">进程</label></button>
+        <button class="nav-item" data-view="scans"><span>✓</span><label data-i18n="scans">体检</label></button>
+        <button class="nav-item" data-view="reports"><span>▤</span><label data-i18n="reports">报告</label></button>
+        <button class="nav-item" data-view="devices"><span>⌘</span><label data-i18n="devices">设备与设置</label></button>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="themeButton" class="icon-button" title="切换主题">◐</button>
+        <button id="languageButton" class="icon-button">EN</button>
+        <span id="connectionDot" class="connection-dot offline"></span>
+        <small id="connectionText">未连接</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div><h1 id="pageTitle" data-i18n="overview">总览</h1><p id="deviceLine" class="muted">等待连接 Agent</p></div>
+        <div class="top-actions">
+          <button id="quickScanButton" class="primary" data-i18n="quickScan">快速检测</button>
+          <button id="connectButton" class="secondary" data-i18n="connect">连接设备</button>
+        </div>
+      </header>
+
+      <section id="view-dashboard" class="view active">
+        <div class="hero-card card">
+          <div><span class="eyebrow" data-i18n="deviceHealth">设备健康</span><div class="health-score" id="healthScore">--</div><div id="healthStatus" class="muted">尚无检测报告</div></div>
+          <div class="hero-meta"><div><span data-i18n="lastScan">最近体检</span><b id="lastScan">--</b></div><div><span data-i18n="operatingMode">运行模式</span><b id="operatingMode">--</b></div><div><span data-i18n="uptime">运行时长</span><b id="uptime">--</b></div></div>
+        </div>
+        <div class="cards metrics-grid">
+          <article class="metric-card card"><div class="metric-head"><span>CPU</span><small id="cpuDetail">--</small></div><div class="metric-value" id="cpuValue">--</div><div class="progress"><i id="cpuBar"></i></div></article>
+          <article class="metric-card card"><div class="metric-head"><span data-i18n="memory">内存</span><small id="memoryDetail">--</small></div><div class="metric-value" id="memoryValue">--</div><div class="progress"><i id="memoryBar"></i></div></article>
+          <article class="metric-card card"><div class="metric-head"><span data-i18n="disk">系统盘</span><small id="diskDetail">--</small></div><div class="metric-value" id="diskValue">--</div><div class="progress"><i id="diskBar"></i></div></article>
+          <article class="metric-card card"><div class="metric-head"><span data-i18n="network">网络</span><small id="networkDetail">--</small></div><div class="metric-value compact" id="networkValue">--</div><div class="metric-sub" id="networkRate">↓ --  ↑ --</div></article>
+          <article class="metric-card card"><div class="metric-head"><span>GPU</span><small id="gpuDetail">--</small></div><div class="metric-value" id="gpuValue">--</div><div class="progress"><i id="gpuBar"></i></div></article>
+          <article class="metric-card card"><div class="metric-head"><span data-i18n="temperature">温度</span><small id="tempDetail">--</small></div><div class="metric-value" id="tempValue">--</div><div class="metric-sub" id="powerValue">--</div></article>
+        </div>
+        <div class="two-column">
+          <article class="card"><div class="card-title"><h2 data-i18n="recentAlerts">最近告警</h2></div><div id="alertList" class="list muted" data-i18n="noAlerts">暂无活动告警</div></article>
+          <article class="card"><div class="card-title"><h2 data-i18n="recentScans">最近体检</h2></div><div id="recentScans" class="list muted" data-i18n="noScans">尚无体检记录</div></article>
+        </div>
+      </section>
+
+      <section id="view-realtime" class="view">
+        <div class="toolbar"><div class="range-tabs"><button class="active" data-range="1">1 分钟</button><button data-range="5">5 分钟</button><button data-range="60">1 小时</button></div><button id="pauseButton" class="secondary">暂停更新</button></div>
+        <div class="charts-grid">
+          <article class="card chart-card"><div class="chart-head"><h2>CPU</h2><b id="chartCpu">--</b></div><canvas id="chart-cpu" height="220"></canvas></article>
+          <article class="card chart-card"><div class="chart-head"><h2 data-i18n="memory">内存</h2><b id="chartMemory">--</b></div><canvas id="chart-memory" height="220"></canvas></article>
+          <article class="card chart-card"><div class="chart-head"><h2 data-i18n="diskIO">磁盘吞吐</h2><b id="chartDisk">--</b></div><canvas id="chart-disk" height="220"></canvas></article>
+          <article class="card chart-card"><div class="chart-head"><h2 data-i18n="network">网络</h2><b id="chartNetwork">--</b></div><canvas id="chart-network" height="220"></canvas></article>
+        </div>
+      </section>
+
+      <section id="view-hardware" class="view"><div id="hardwareContent" class="cards"></div></section>
+      <section id="view-network" class="view"><div id="networkContent" class="cards"></div></section>
+      <section id="view-processes" class="view"><div class="card"><div class="card-title"><h2 data-i18n="processList">进程列表</h2><input id="processSearch" class="search" placeholder="搜索进程"></div><div class="table-wrap"><table><thead><tr><th>PID</th><th data-i18n="name">名称</th><th>CPU</th><th data-i18n="memory">内存</th><th data-i18n="company">公司</th></tr></thead><tbody id="processTable"></tbody></table></div></div></section>
+      <section id="view-scans" class="view">
+        <div class="two-column"><article class="card"><h2 data-i18n="startScan">开始体检</h2><p class="muted" data-i18n="scanHint">所有结论来自真实采集指标和配置规则。</p><div class="scan-options"><label><input type="radio" name="scanMode" value="quick" checked> <span data-i18n="quickScan">快速检测</span></label><label><input type="radio" name="scanMode" value="full"> <span data-i18n="fullScan">完整检测</span></label><label><input type="checkbox" id="generatePdf" checked> PDF</label><label><input type="checkbox" id="redactReport" checked> <span data-i18n="redact">默认脱敏</span></label></div><button id="startScanButton" class="primary" data-i18n="startScan">开始体检</button></article><article class="card"><h2 data-i18n="scanProgress">检测进度</h2><div class="progress large"><i id="scanProgressBar"></i></div><p id="scanProgressText" class="muted">--</p><pre id="scanLog" class="log"></pre></article></div>
+        <div class="card"><h2 data-i18n="scanHistory">体检历史</h2><div class="table-wrap"><table><thead><tr><th>ID</th><th data-i18n="mode">模式</th><th data-i18n="status">状态</th><th data-i18n="started">开始时间</th><th></th></tr></thead><tbody id="scanTable"></tbody></table></div></div>
+      </section>
+      <section id="view-reports" class="view"><div class="card"><div class="card-title"><h2 data-i18n="reportCenter">报告中心</h2><button id="refreshReports" class="secondary" data-i18n="refresh">刷新</button></div><div id="reportList" class="report-grid muted" data-i18n="noReports">尚无报告</div></div></section>
+      <section id="view-devices" class="view">
+        <div class="two-column"><article class="card"><h2 data-i18n="connection">连接</h2><label>Agent 地址<input id="agentUrl" class="field" placeholder="https://192.168.1.10:17821"></label><label>Token<input id="tokenField" class="field" type="password" placeholder="配对后自动填写"></label><button id="saveConnection" class="primary" data-i18n="save">保存</button><button id="disconnectButton" class="danger" data-i18n="disconnect">断开</button></article><article class="card"><h2 data-i18n="privacySettings">隐私与设置</h2><p class="muted" data-i18n="privacyHint">Agent 默认只监听局域网和本机，报告默认隐藏 MAC、IP、用户名和序列号。</p><div class="settings-row"><span data-i18n="theme">主题</span><button id="settingsTheme" class="secondary">自动 / 深色 / 浅色</button></div><div class="settings-row"><span data-i18n="language">语言</span><button id="settingsLanguage" class="secondary">中文 / English</button></div><div class="settings-row"><span data-i18n="certificate">TLS 指纹</span><code id="certFingerprint">--</code></div></article></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="pairDialog" class="dialog">
+    <form method="dialog" id="pairForm">
+      <div class="dialog-head"><h2 data-i18n="pairTitle">连接 PulseCheck Agent</h2><button value="cancel" class="icon-button">×</button></div>
+      <p class="muted" data-i18n="pairHint">在 Agent 所在电脑运行配对命令，或通过受信任局域网输入一次性配对码。</p>
+      <label>Agent 地址<input id="pairUrl" class="field" value="" placeholder="https://localhost:17821"></label>
+      <label>配对码<input id="pairCode" class="field" inputmode="numeric" maxlength="6" placeholder="6 位配对码"></label>
+      <label>控制器名称<input id="controllerName" class="field" value="Windows Web Controller"></label>
+      <div class="dialog-actions"><button value="cancel" class="secondary" data-i18n="cancel">取消</button><button id="pairSubmit" value="default" class="primary" data-i18n="pair">配对</button></div>
+      <p id="pairError" class="error"></p>
+    </form>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>
